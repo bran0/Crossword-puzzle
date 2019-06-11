@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Word Search Puzzle Generator</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+  <style>
+    /* Set height of the grid so .sidenav can be 100% (adjust if needed) */
+    .row.content {height: 1500px}
+    
+    /* Set gray background color and 100% height */
+    .sidenav {
+      background-color: #f1f1f1;
+      height: 100%;
+    }
+    
+    /* On small screens, set height to 'auto' for sidenav and grid */
+    @media screen and (max-width: 767px) {
+      .sidenav {
+        height: auto;
+        padding: 15px;
+      }
+      .row.content {height: auto;} 
+    }
+		input, textarea {
+			width: 100%;
+		}
+		textarea {
+			max-width: 100%;
+			height: 150px;
+		}
+  </style>
+</head>
+<body>
+	<div class="container-fluid">
+		<div class="row content">
+			<div class="col-sm-3 sidenav">
+				<h3>Input the parameters</h3>
+				<ul class="nav nav-pills nav-stacked">
+					<li><h4>Maximum number of words</h4></li>
+					<li><input type="number" id="maxNumOfWords" min="2" max="100" value="5"></li>
+					<li><h4>Grid size</h4></li>
+					<li><input type="number" id="gridSize" min="5" max="100" value="10"></li>
+<!--					<li><h4>Maximum grid size</h4></li>
+					<li><input type="number" id="maxGridSize" min="5" max="100" value="15"></li>-->
+					<li><h4>Words</h4></li>
+					<li><textarea id="words"></textarea></li>
+					<li><input type="button" value="Generate" onclick="generate()" id="btn"></li>
+				</ul><br>
+			</div>
+
+			<div class="col-sm-9">
+				<canvas id="result" width="800" height="800"></canvas>
+			</div>
+		</div>
+	</div>
+	<script>
+		let maxNumOfWords
+		let gridSize
+		let strword
+		let words
+		let selectedWords = []
+		let grid = []
+		let answer = []
+		let ans = {
+			x: [],
+			y: [],
+			dir: []
+		}
+		let placed = []
+		let offset = [[1, 0], [0, -1], [-1, 0], [0, 1], [1, -1], [-1, -1], [-1, 1], [1, 1]]
+		function randInt(x) {
+			return Math.floor(Math.random() * x)
+		}
+		function generate() {
+			maxNumOfWords = parseInt(document.getElementById("maxNumOfWords").value)
+			gridSize = parseInt(document.getElementById("gridSize").value)
+			strword = document.getElementById("words").value
+			splitWords()
+			selectWords(gridSize, maxNumOfWords)
+			buildPuzzle()
+			printPuzzle()
+		}
+		function splitWords() {
+			strword = strword.toUpperCase()
+			words = strword.split('\n')
+			words = words.map(a => {
+				let len = a.length
+				let res = ''
+				for (let i = 0; i < len; i ++) {
+					if (a[i] >= 'A' && a[i] <= 'Z')
+						res += a[i]
+				}
+				return res
+			})
+			words = words.filter(a => {
+				return a.length > 0
+			})
+			words.sort(function(a, b) {
+				return a.length - b.length
+			})
+		}
+		function buildPuzzle() {
+			grid = new Array
+			answer = new Array
+			for (let i = 0; i < gridSize; i ++) {
+				grid[i] = new Array
+				answer[i] = new Array
+				for (let j = 0; j < gridSize; j ++) {
+					grid[i][j] = '#'
+					answer[i][j] = false
+				}
+			}
+			ans.x = new Array
+			ans.y = new Array
+			ans.dir = new Array
+			for (let i = 0; i < selectedWords.length; i ++) {
+				ans.dir[i] = -1
+			}
+			for (let i = 0; i < selectedWords.length; i ++) {
+				putWord(i)
+			}
+			fillPuzzle()
+		}
+		function fillPuzzle() {
+			for (let i = 0; i < gridSize; i ++) {
+				for (let j = 0; j < gridSize; j ++) {
+					if (grid[i][j] === '#') {
+						grid[i][j] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[randInt(26)]
+					}
+				}
+			}
+		}
+		function checkPutable(id, x, y, dir) {
+			let ix = x, iy = y
+			for (let i = 0; i < selectedWords[id].length; i ++) {
+				if (ix < 0 || ix >= gridSize)
+					return false
+				if (iy < 0 || iy >= gridSize)
+					return false
+				if (grid[ix][iy] != '#' && grid[ix][iy] != selectedWords[id][i])
+					return false
+				ix += offset[dir][0]
+				iy += offset[dir][1]
+			}
+			return true
+		}
+		function putWord(id) {
+			if (gridSize < selectedWords[id].length)
+				return false
+			for (let i = 0; i < 1000; i ++) {
+				let tmp = randInt(gridSize - selectedWords[id].length + 1)
+				let tx, ty
+				let tdir
+				if (Math.random() > 0.5) {
+					if (Math.random() > 0.5) {
+						tx = tmp
+						tdir = Array(0, 1, 2, 6, 7)[randInt(5)]
+					}
+					else {
+						tx = gridSize - tmp - 1
+						tdir = Array(2, 3, 4, 5, 6)[randInt(5)]
+					}
+					ty = randInt(gridSize)
+				}
+				else {
+					tx = randInt(gridSize)
+					if (Math.random() > 0.5) {
+						ty = tmp
+						tdir = Array(4, 5, 6, 7, 0)[randInt(5)]
+					}
+					else {
+						ty = gridSize - tmp - 1
+						tdir = Array(0, 1, 2, 3, 4)[randInt(5)]
+					}
+				}
+				if (checkPutable(id, tx, ty, tdir) === true) {
+					ans.x[id] = tx
+					ans.y[id] = ty
+					ans.dir[id] = tdir
+					for (let j = 0; j < selectedWords[id].length; j ++) {
+						grid[tx][ty] = selectedWords[id][j]
+						answer[tx][ty] = true
+						tx += offset[tdir][0]
+						ty += offset[tdir][1]
+					}
+					return true
+				}
+			}
+			return false
+		}
+		function selectWords(maxLen, num) {
+			let maxid = 0
+			selectedWords = new Array
+			for (maxid = 0; maxid < words.length; maxid ++) {
+				if (words[maxid].length > maxLen)
+					break
+			}
+			if (maxid <= num) {
+				for (let i = 0; i < maxid; i ++)
+					selectedWords[i] = words[i]
+			}
+			else {
+				let flag = new Array
+				for (let i = 0; i < maxid; i ++)
+					flag[i] = false
+				let tid, i = 0
+				for (tid = randInt(maxid); ; tid = randInt(maxid)) {
+					if (flag[tid] === true)
+						continue
+					flag[tid] = true
+					selectedWords[i] = words[tid]
+					i ++
+					if (i >= num)
+						break
+				}
+			}
+			selectedWords.sort((a, b) => {
+				return b.length - a.length
+			})
+		}
+		function printPuzzle() {
+			let canvas = document.getElementById("result")
+			let ctx = canvas.getContext('2d')
+			ctx.beginPath()
+			ctx.clearRect(0, 0, 800, 800)
+			ctx.font = "20px Comic Sans MS";
+			ctx.textAlign = "center";
+			for (let i = 0; i < gridSize; i ++) {
+				for (let j = 0; j < gridSize; j ++) {
+					if (answer[i][j] === true)
+						ctx.fillStyle = "red"
+					else
+						ctx.fillStyle = "black"
+					ctx.fillText(grid[i][j], i * 30 + 50, j * 30 + 50)
+				}
+			}
+			ctx.lineWidth = 3
+			for (let i = 0; i < selectedWords.length; i ++) {
+				if (ans.dir[i] >= 0) {
+					ctx.moveTo(ans.x[i] * 30 + 50, ans.y[i] * 30 + 45)
+					ctx.lineTo((ans.x[i] + offset[ans.dir[i]][0] * (selectedWords[i].length - 1)) * 30 + 50, (ans.y[i] + offset[ans.dir[i]][1] * (selectedWords[i].length - 1)) * 30 + 45)
+					ctx.stroke()
+				}
+			}
+		}
+	</script>
+</body>
+</html>
